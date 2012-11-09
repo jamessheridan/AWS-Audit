@@ -4,27 +4,37 @@ AWS Audit is intended to be used to both track Amazon Webservices configuration 
 multiple accounts, and also provide a data building block to be used as a foundation for other 
 applications.
 
+This will query any number of AWS accounts and produce a monolithic XML file containing all of the
+data which it finds.
+
+This is something which I (github.com/jamessheridan) wrote when I was back at News International.
+It is horrifically crufty python and I make no apologies for that!
+
+It was open sourced by NI, but was subsequently abandoned by them. Andy Brody (github.com/ab) kindly
+cleaned up some things and here it is now.
+
+At the time, NI had many different AWS accounts, spread over different availability zones and regions
+and this made it very tricky to work out what was in play at any given moment. So, I wrote this.
 
 Requirements
 ------------
 Python 2.6 - we haven't tested on any earlier or later versions
 Boto Library 2.0b4 (http://code.google.com/p/boto/) - again, not tested on any other
 PyYAML 3.10 (http://pyyaml.org/wiki/PyYAML)
-Apache 2+ (optional but used to access the result)
-
+python-ElementTree library
 
 Installation Steps (See below for details)
 ------------------------------------------
-Create IAM User Account with S3 read permissions
-Create S3 Bucket to store account credentials *only* accessible by an account user, not everyone!!
-Create config file (/etc/aws_audit.conf)
-Install ec2_audit.py file in a directory (/u01/app/audit/)
-Run the file manually and check for errors
-Install crontab
-*/12 * * * * /u01/app/audit/aws_audit.py >/tmp/aws_audit.out 2>&1
-Access the aws_audit.xml using a browser
-Try a visualisation
+1. Create an S3 bucket to retain account credentials. Ensure this bucket is not publicly visible.
+2. Create an IAM account within your master AWS account.
+3. Ensure the S3 bucket you created in 1. is only accessible by the new IAM user.
+4. Edit the config file /etc/aws_audit.conf
+   This should be fairly self-explanatory, the config is short and commented.
 
+5. Place aws_audit.py somewhere sensible (eg. /usr/local/bin/aws_audit.py)
+6. Install a crontab entry to periodically poll AWS and get updated information.
+   eg:
+   */12 * * * * /usr/local/bin/aws_audit.py >/tmp/aws_audit.out 2>&1
 
 
 Amazon account credentials in S3 Bucket
@@ -33,6 +43,9 @@ AWS Audit has the ability to track multiple Amazon Webservices accounts, the acc
 to be stored somewhere, we have chosen to use an S3 bucket. You can secure the S3 bucket using an IAM 
 policy and bucket policy, but we just use the master AWS accounts access keys for where the S3 bucket 
 is configured.
+
+Inside the credential bucket you need to create some files - one each per account you wish to monitor.
+
 
 The master account details required to read all the account credentials are configured by AWS Audit in 
 the /etc/aws_audit.conf file, in these 2 settings:
@@ -48,19 +61,3 @@ Folder: <accountNumber>-<accountEmail> e.g. 123456789123-joe@example.com
 AccountName=joe@example.com
 AWSAccessKeyId=ABTHJK7TBVBV45PDYFAMA
 AWSSecretKey=5jJoj3aaJi3mdAWW76jE89FNxVPeOabXqqQIS2be
-
-
-Visualisation
--------------
-The visualation is simply an XSLT javascript which provides a simple framework for producing dashboards 
-off the back of the master XML file (aws_audit.xml) produced; the files involved are:
-xsltproc.html		# Javascript file which loads the XML file and an XSL file to produce an Output, 
-                        # you may need to change the line to point to the result XML: 
-                        # xml=loadXMLDoc("aws_audit.xml");
-index.html		# Basic frameset
-menu.html		# Basic menu
-DBs.xsl			# Example XSL to show all RDS instances
-EC2_instances.xsl	# Example XSL to show all EC2 instances
-VPC_instances.xsl	# Example XSL to show all VPC/EC2 Instances
-Summary_EC2.xsl		# Example Summary to show the EC2 Instance summary by account
-
